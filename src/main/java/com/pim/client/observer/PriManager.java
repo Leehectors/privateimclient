@@ -15,13 +15,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+
 public class PriManager {
 
     private LinkedList<String> linkedList = new LinkedList<>();
     private static PriManager priManager;
 
-
-    private static ScheduledExecutorService scheduledExecutor;
 
     public String imIPAndPort = "";
     public String fromUid = "";
@@ -32,7 +31,8 @@ public class PriManager {
     public PriWebSocketClient priWebSocketClient;
     public PriManagerSubject priManagerSubject;
 
-    ScheduledExecutorService reSendScheduler;
+    ScheduledExecutorService resendScheduler;
+
 
     private PriManager() {
         priManagerSubject = new PriManagerSubject();
@@ -48,7 +48,7 @@ public class PriManager {
     public void setSSL() {
         try {
             SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, new TrustManager[]{trustManager}, null);
+            sslContext.init(null, new TrustManager[]{MyTrustManager.trustManager}, null);
             SSLSocketFactory socketFactory = sslContext.getSocketFactory();
             priWebSocketClient.setSocketFactory(socketFactory);
         } catch (Exception e) {
@@ -61,10 +61,7 @@ public class PriManager {
      */
     public void startSocket() {
 
-        scheduledExecutor = Executors.newScheduledThreadPool(3);
-
         try {
-
             URI serverUri = URI.create(imIPAndPort);
             priWebSocketClient = new PriWebSocketClient(serverUri);
             if (imIPAndPort.indexOf("wss://") >= 0) {
@@ -74,10 +71,8 @@ public class PriManager {
             priWebSocketClient.fromUid = fromUid;
             priWebSocketClient.token = token;
             priWebSocketClient.deviceId = deviceId;
-
             priWebSocketClient.start();
-            scheduleReconnect();
-
+            scheduleResend();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -89,7 +84,6 @@ public class PriManager {
      */
     public void stopSocket() {
         priWebSocketClient.close();
-        scheduledExecutor.shutdown();
     }
 
     /**
@@ -111,11 +105,12 @@ public class PriManager {
         return sendrs;
     }
 
-    private void scheduleReconnect() {
-        reSendScheduler = Executors.newSingleThreadScheduledExecutor();
+
+    private void scheduleResend() {
+        resendScheduler = Executors.newSingleThreadScheduledExecutor();
         long delay = 10; //Delay execution time (seconds)
-        long period = 3; //Execution interval (seconds)
-        reSendScheduler.scheduleAtFixedRate(this::checkReSend, delay, period, TimeUnit.SECONDS);
+        long period = 5; //Execution interval (seconds)
+        resendScheduler.scheduleAtFixedRate(this::checkReSend, delay, period, TimeUnit.SECONDS);
     }
 
     private void checkReSend() {
@@ -127,41 +122,4 @@ public class PriManager {
     }
 
 
-    TrustManager trustManager = new X509ExtendedTrustManager() {
-
-        @Override
-        public void checkServerTrusted(X509Certificate[] chain, String authType, Socket socket) throws CertificateException {
-
-        }
-
-        @Override
-        public void checkClientTrusted(X509Certificate[] x509Certificates, String s, Socket socket) throws CertificateException {
-
-        }
-
-        @Override
-        public void checkClientTrusted(X509Certificate[] chain, String authType, SSLEngine engine) throws CertificateException {
-
-        }
-
-        @Override
-        public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine engine) throws CertificateException {
-
-        }
-
-        @Override
-        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-
-        }
-
-        @Override
-        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-
-        }
-
-        @Override
-        public X509Certificate[] getAcceptedIssuers() {
-            return new X509Certificate[]{};
-        }
-    };
 }
